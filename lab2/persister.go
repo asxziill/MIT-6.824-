@@ -54,7 +54,7 @@ func (ps *Persister) RaftStateSize() int {
 	return len(ps.raftstate)
 }
 
-// Save both Raft status and K/V snapshot as a single atomic action,
+// Save both Raft state and K/V snapshot as a single atomic action,
 // to help avoid them getting out of sync.
 func (ps *Persister) SaveStateAndSnapshot(state []byte, snapshot []byte) {
 	ps.mu.Lock()
@@ -73,8 +73,4 @@ func (ps *Persister) SnapshotSize() int {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	return len(ps.snapshot)
-}
-
-func (rf *Raft) GetRaftStateSize() int {
-	return rf.persister.RaftStateSize()
 }
