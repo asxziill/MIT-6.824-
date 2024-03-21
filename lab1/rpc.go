@@ -6,8 +6,109 @@ package mr
 // remember to capitalize all names.
 //
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"time"
+)
 import "strconv"
+
+const (
+	MaxTaskRunInterval = time.Second * 10
+)
+
+type Task struct {
+	fileName  string
+	id        int
+	startTime time.Time
+	status    TaskStatus
+}
+
+type HeartbeatRequest struct {
+}
+
+type HeartbeatResponse struct {
+	FilePath string
+	JobType  JobType
+	NReduce  int
+	NMap     int
+	Id       int
+}
+
+func (response HeartbeatResponse) String() string {
+	switch response.JobType {
+	case MapJob:
+		return fmt.Sprintf("{JobType:%v,FilePath:%v,Id:%v,NReduce:%v}", response.JobType, response.FilePath, response.Id, response.NReduce)
+	case ReduceJob:
+		return fmt.Sprintf("{JobType:%v,Id:%v,NMap:%v,NReduce:%v}", response.JobType, response.Id, response.NMap, response.NReduce)
+	case WaitJob, CompleteJob:
+		return fmt.Sprintf("{JobType:%v}", response.JobType)
+	}
+	panic(fmt.Sprintf("unexpected JobType %d", response.JobType))
+}
+
+type ReportRequest struct {
+	Id    int
+	Phase SchedulePhase
+}
+
+func (request ReportRequest) String() string {
+	return fmt.Sprintf("{Id:%v,SchedulePhase:%v}", request.Id, request.Phase)
+}
+
+type ReportResponse struct {
+}
+
+type SchedulePhase uint8
+
+const (
+	MapPhase SchedulePhase = iota
+	ReducePhase
+	CompletePhase
+)
+
+func (phase SchedulePhase) String() string {
+	switch phase {
+	case MapPhase:
+		return "MapPhase"
+	case ReducePhase:
+		return "ReducePhase"
+	case CompletePhase:
+		return "CompletePhase"
+	}
+	panic(fmt.Sprintf("unexpected SchedulePhase %d", phase))
+}
+
+type JobType uint8
+
+const (
+	MapJob JobType = iota
+	ReduceJob
+	WaitJob
+	CompleteJob
+)
+
+func (job JobType) String() string {
+	switch job {
+	case MapJob:
+		return "MapJob"
+	case ReduceJob:
+		return "ReduceJob"
+	case WaitJob:
+		return "WaitJob"
+	case CompleteJob:
+		return "CompleteJob"
+	}
+	panic(fmt.Sprintf("unexpected jobType %d", job))
+}
+
+type TaskStatus uint8
+
+const (
+	Waiting TaskStatus = iota
+	Working
+	Finished
+)
 
 //
 // example to show how to declare the arguments
@@ -21,48 +122,6 @@ type ExampleArgs struct {
 type ExampleReply struct {
 	Y int
 }
-
-// Task worker向coordinator获取task的结构体
-type Task struct {
-	TaskType   TaskType // 任务类型判断到底是map还是reduce
-	TaskId     int      // 任务的id
-	ReducerNum int      // 传入的reducer的数量，用于hash
-	FileSlice  []string // 输入文件的切片，map一个文件对应一个文件，reduce是对应多个temp中间值文件
-}
-
-// TaskArgs rpc应该传入的参数，可实际上应该什么都不用传,因为只是worker获取一个任务
-type TaskArgs struct{}
-
-// TaskType 对于下方枚举任务的父类型
-type TaskType int
-
-// Phase 对于分配任务阶段的父类型
-type Phase int
-
-// State 任务的状态的父类型
-type State int
-
-// 枚举任务的类型
-const (
-	MapTask TaskType = iota
-	ReduceTask
-	WaittingTask // Waittingen任务代表此时为任务都分发完了，但是任务还没完成，阶段未改变
-	ExitTask     // exit
-)
-
-// 枚举阶段的类型
-const (
-	MapPhase    Phase = iota // 此阶段在分发MapTask
-	ReducePhase              // 此阶段在分发ReduceTask
-	AllDone                  // 此阶段已完成
-)
-
-// 任务状态类型
-const (
-	Working State = iota // 此阶段在工作
-	Waiting              // 此阶段在等待执行
-	Done                 // 此阶段已经做完
-)
 
 // Add your RPC definitions here.
 
